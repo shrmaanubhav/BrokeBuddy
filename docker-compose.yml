@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./api
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./api/.env
+    depends_on:
+      - llm
+
+  llm:
+    build: ./llm
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./llm/.env

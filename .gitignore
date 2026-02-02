@@ -1,0 +1,36 @@
+# Node / React Native
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# React Native
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.keystore
+
+# Go
+api/bin/
+api/*.exe
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Gradle
+.gradle/
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Docker
+*.log

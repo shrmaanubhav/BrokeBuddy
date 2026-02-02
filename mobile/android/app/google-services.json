@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "495398548603",
+    "project_id": "brokebuddy-dc404",
+    "storage_bucket": "brokebuddy-dc404.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:495398548603:android:1fddcdec913f5041cc5ede",
+        "android_client_info": {
+          "package_name": "com.brokebuddymobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCApaDf9zcsWNiGFqlRcp0ZkPySUWm0HCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

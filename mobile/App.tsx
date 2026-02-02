@@ -1,61 +1,71 @@
-import React, { useState ,useEffect} from 'react';
-import { View, TextInput, Button, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
 import auth from '@react-native-firebase/auth';
+import * as Keychain from 'react-native-keychain';
+
+import AuthScreen from './src/screens/AuthScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import PinScreen from './src/screens/PinScreen';
+import SetPinScreen from './src/screens/SetPinScreen';
 
 export default function App() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-    console.log('User on app start:', auth().currentUser);
+  const [pinEnabled, setPinEnabled] = useState(false);
+  const [pinVerified, setPinVerified] = useState(false);
+  const [needsPinSetup, setNeedsPinSetup] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged(async u => {
+      setUser(u);
+
+      if (u) {
+        const creds = await Keychain.getGenericPassword();
+
+        if (creds) {
+          setPinEnabled(true);
+          setNeedsPinSetup(false);
+        } else {
+          setPinEnabled(false);
+          setNeedsPinSetup(true);
+        }
+      } else {
+        // reset all local auth state on logout
+        setPinEnabled(false);
+        setPinVerified(false);
+        setNeedsPinSetup(false);
+      }
+
+      setLoading(false);
+    });
+
+    return unsubscribe;
   }, []);
 
-  const [phone, setPhone] = useState('+91');
-  const [confirm, setConfirm] = useState<any>(null);
-  const [code, setCode] = useState('');
+  if (loading) return null; // splash later
 
-  const sendOtp = async () => {
-    try {
-      const confirmation = await auth().signInWithPhoneNumber(phone);
-      setConfirm(confirmation);
-      console.log('OTP sent');
-    } catch (e) {
-      console.log('OTP error', e);
-    }
-  };
+  // 1️⃣ Not logged in → OTP
+  if (!user) {
+    return <AuthScreen />;
+  }
 
-  const verifyOtp = async () => {
-    try {
-      await confirm.confirm(code);
-      console.log('OTP verified');
-      console.log('User:', auth().currentUser);
-    } catch (e) {
-      console.log('Invalid code', e);
-    }
-  };
-
-  if (!confirm) {
+  // 2️⃣ Logged in, no PIN yet → ask to set PIN (skippable)
+  if (needsPinSetup) {
     return (
-      <View style={{ padding: 20 }}>
-        <Text>Enter phone number</Text>
-        <TextInput
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="+91XXXXXXXXXX"
-          keyboardType="phone-pad"
-        />
-        <Button title="Send OTP" onPress={sendOtp} />
-      </View>
+      <SetPinScreen
+        onDone={() => {
+          setNeedsPinSetup(false);
+          setPinEnabled(true);
+        }}
+      />
     );
   }
 
-  return (
-    <View style={{ padding: 20 }}>
-      <Text>Enter OTP</Text>
-      <TextInput
-        value={code}
-        onChangeText={setCode}
-        keyboardType="number-pad"
-      />
-      <Button title="Verify OTP" onPress={verifyOtp} />
-    </View>
-  );
+  // 3️⃣ PIN exists but not verified → lock app
+  if (pinEnabled && !pinVerified) {
+    return <PinScreen onUnlock={() => setPinVerified(true)} />;
+  }
+
+  // 4️⃣ Fully authenticated & unlocked
+  return <HomeScreen />;
 }

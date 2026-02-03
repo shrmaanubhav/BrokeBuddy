@@ -7,6 +7,8 @@ import HomeScreen from './src/screens/HomeScreen';
 import PinScreen from './src/screens/PinScreen';
 import SetPinScreen from './src/screens/SetPinScreen';
 
+import { isBiometricEnabled } from './src/services/biometric';
+
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -14,42 +16,45 @@ export default function App() {
   const [pinEnabled, setPinEnabled] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
   const [needsPinSetup, setNeedsPinSetup] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async u => {
+    const unsub = auth().onAuthStateChanged(async u => {
       setUser(u);
 
       if (u) {
-        const creds = await Keychain.getGenericPassword();
-
-        if (creds) {
+        // 🔐 PIN check (safe)
+        const pinCreds = await Keychain.getGenericPassword();
+        if (pinCreds) {
           setPinEnabled(true);
           setNeedsPinSetup(false);
         } else {
           setPinEnabled(false);
           setNeedsPinSetup(true);
         }
+
+        // ✅ SAFE biometric flag (NO prompt)
+        setBiometricEnabled(await isBiometricEnabled());
       } else {
-        // reset all local auth state on logout
+        // logout reset
         setPinEnabled(false);
         setPinVerified(false);
         setNeedsPinSetup(false);
+        setBiometricEnabled(false);
       }
 
       setLoading(false);
     });
 
-    return unsubscribe;
+    return unsub;
   }, []);
 
-  if (loading) return null; // splash later
+  if (loading) return null;
 
-  // 1️⃣ Not logged in → OTP
-  if (!user) {
-    return <AuthScreen />;
-  }
+  // 1️⃣ Not logged in
+  if (!user) return <AuthScreen />;
 
-  // 2️⃣ Logged in, no PIN yet → ask to set PIN (skippable)
+  // 2️⃣ Logged in, no PIN yet
   if (needsPinSetup) {
     return (
       <SetPinScreen
@@ -61,11 +66,16 @@ export default function App() {
     );
   }
 
-  // 3️⃣ PIN exists but not verified → lock app
+  // 3️⃣ Locked → PIN (biometric optional)
   if (pinEnabled && !pinVerified) {
-    return <PinScreen onUnlock={() => setPinVerified(true)} />;
+    return (
+      <PinScreen
+        allowBiometric={biometricEnabled}
+        onUnlock={() => setPinVerified(true)}
+      />
+    );
   }
 
-  // 4️⃣ Fully authenticated & unlocked
+  // 4️⃣ Fully unlocked
   return <HomeScreen />;
 }

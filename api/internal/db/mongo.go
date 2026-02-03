@@ -42,8 +42,11 @@ func Connect() {
 	}
 
 	Client = client
-	Database = client.Database("brokebuddy")
-
+	db_name := os.Getenv("MONGO_DB_NAME")
+	if db_name == "" {
+		db_name = "brokebuddy"
+	}
+	Database = client.Database(db_name)
 	log.Println("MongoDB connected")
 }
 

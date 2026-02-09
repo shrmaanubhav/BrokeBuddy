@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import auth from '@react-native-firebase/auth';
 import * as Keychain from 'react-native-keychain';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import AuthScreen from './src/screens/AuthScreen';
-import HomeScreen from './src/screens/HomeScreen';
-import PinScreen from './src/screens/PinScreen';
+import NameOnboardingScreen from './src/screens/NameOnboardingScreen';
 import SetPinScreen from './src/screens/SetPinScreen';
+import PinScreen from './src/screens/PinScreen';
+import HomeScreen from './src/screens/HomeScreen';
 
 import { isBiometricEnabled } from './src/services/biometric';
 
@@ -17,13 +19,13 @@ export default function App() {
   const [pinVerified, setPinVerified] = useState(false);
   const [needsPinSetup, setNeedsPinSetup] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
 
   useEffect(() => {
     const unsub = auth().onAuthStateChanged(async u => {
       setUser(u);
 
       if (u) {
-        // 🔐 PIN check (safe)
         const pinCreds = await Keychain.getGenericPassword();
         if (pinCreds) {
           setPinEnabled(true);
@@ -33,14 +35,16 @@ export default function App() {
           setNeedsPinSetup(true);
         }
 
-        // ✅ SAFE biometric flag (NO prompt)
         setBiometricEnabled(await isBiometricEnabled());
+
+        const flag = await AsyncStorage.getItem('softOnboardingCompleted');
+        setOnboardingDone(flag === 'true');
       } else {
-        // logout reset
         setPinEnabled(false);
         setPinVerified(false);
         setNeedsPinSetup(false);
         setBiometricEnabled(false);
+        setOnboardingDone(false);
       }
 
       setLoading(false);
@@ -54,7 +58,20 @@ export default function App() {
   // 1️⃣ Not logged in
   if (!user) return <AuthScreen />;
 
-  // 2️⃣ Logged in, no PIN yet
+  // 2️⃣ Logged in, but name not collected yet
+  if (!onboardingDone) {
+    return (
+      <NameOnboardingScreen
+        onComplete={async () => {
+          await AsyncStorage.setItem('softOnboardingCompleted', 'true');
+          setOnboardingDone(true);
+          setPinVerified(false); // safety reset
+        }}
+      />
+    );
+  }
+
+  // 3️⃣ Name done, but no PIN yet
   if (needsPinSetup) {
     return (
       <SetPinScreen
@@ -66,7 +83,7 @@ export default function App() {
     );
   }
 
-  // 3️⃣ Locked → PIN (biometric optional)
+  // 4️⃣ PIN exists but not unlocked
   if (pinEnabled && !pinVerified) {
     return (
       <PinScreen
@@ -76,6 +93,6 @@ export default function App() {
     );
   }
 
-  // 4️⃣ Fully unlocked
+  // 5️⃣ Fully ready
   return <HomeScreen />;
 }

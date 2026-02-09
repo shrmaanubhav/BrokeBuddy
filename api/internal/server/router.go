@@ -25,6 +25,7 @@ func Start() {
 			uid, _ := c.Get("firebase_uid")
 			c.JSON(200, gin.H{"uid": uid})
 		})
+		auth.POST("/users/init", InitUser)
 	}
 
 	r.Run(":4000")
